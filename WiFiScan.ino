@@ -40,6 +40,8 @@
 #include <SPI.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include "IMUReader.h"
+#include <arduino-timer.h>
 
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 32
@@ -83,6 +85,9 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 bool is_display_available = false;
 
 ros::NodeHandle nh;
+IMUReader imuReader(nh);
+Timer<10> timer;
+
 std_msgs::String wifi_scan_msg;
 ros::Publisher wifi_scan_pub("wifi_scan_str", &wifi_scan_msg);
 
@@ -207,6 +212,37 @@ void setup()
     }
   }
 
+  int run_imu_calibration = 0;
+  nh.getParam("~run_imu_calibration", &run_imu_calibration, 1, 500);
+  if (run_imu_calibration != 0) {
+    imuReader.calibration();
+    timer.every(100, [](void*){
+      imuReader.update();
+      imuReader.update_calibration();
+      return true;
+    });
+    nh.loginfo("Calibration Mode started");
+    return;
+  }
+
+  int calibration_params[22];
+  uint8_t *offsets = NULL;
+  if (nh.getParam("~calibration_params", calibration_params, 22, 500)) {
+    offsets = (uint8_t*)malloc(sizeof(uint8_t) * 22);
+    for(int i = 0; i < 22; i++) {
+      offsets[i] = calibration_params[i] & 0xFF;
+    }
+  } else {
+    nh.logwarn("clibration_params is needed to use IMU (BNO055) correctly.");
+    nh.logwarn("You can run calibration by setting _run_imu_calibration:=1");
+    nh.logwarn("You can check calibration value with /calibration topic.");
+    nh.logwarn("First 22 byte is calibration data, following 4 byte is calibration status for");
+    nh.logwarn("System, Gyro, Accel, Magnet, 0 (not configured) <-> 3 (configured)");
+    nh.logwarn("Specify like calibration_params:=[0, 0, 0, 0 ...]");
+    nh.logwarn("Visit the following link to check how to calibrate sensoe");
+    nh.logwarn("https://learn.adafruit.com/adafruit-bno055-absolute-orientation-sensor/device-calibration");
+  }
+
   configure();
 
   // init internal state
@@ -216,11 +252,22 @@ void setup()
   memset(aps, 0, sizeof(count));
   memset(lastseen, 0, sizeof(lastseen));
 
-  loginfo("Setup done");
+  nh.loginfo("setting up BNO055");
+  imuReader.init(offsets);
+
+  delay(100);
+
+  timer.every(10, [](void*){
+      imuReader.update();
+      return true;
+    });
+
+  loginfo("ESP32 is ready");
 }
 
 void loop()
 {
+  timer.tick<void>();
   handleScan();
   nh.spinOnce();
 }

@@ -7,6 +7,7 @@ RUN arduino-cli core install esp32:esp32
 RUN arduino-cli lib install "Rosserial Arduino Library"@0.9.1
 RUN arduino-cli lib install "Adafruit GFX Library"
 RUN arduino-cli lib install "Adafruit SSD1306"
-#RUN arduino-cli lib install "arduino-timer"
+RUN arduino-cli lib install "Adafruit BNO055"
+RUN arduino-cli lib install "arduino-timer"
 #RUN arduino-cli lib install "ESP32 AnalogWrite"
 RUN pip3 install pyserial
