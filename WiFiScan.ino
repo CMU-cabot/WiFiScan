@@ -1,24 +1,24 @@
-// Copyright (c) 2020  Carnegie Mellon University
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
-
+/*******************************************************************************
+ * Copyright (c) 2020,2022  Carnegie Mellon University
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *******************************************************************************/
 //
 // This Arduino code will publish WiFi scan result nas string message
 // topic: wifi_scan_str
@@ -36,13 +36,9 @@
 #include "Arduino.h"
 #include "IMUReader.h"
 #include "WiFiReader.h"
+#include "DisplayDriver.h"
 #include <arduino-timer.h>
 
-#define SCREEN_WIDTH 128
-#define SCREEN_HEIGHT 32
-#define OLED_RESET     4
-#define SCREEN_ADDRESS 0x3C
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 // baud rate for serial connection
 #define BAUDRATE (115200)
@@ -51,62 +47,28 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 // this can cause undesirable result with multiple core system like ESP32
 // void(* resetFunc) (void) = 0;
 
-bool is_display_available = false;
-
 ros::NodeHandle nh;
 IMUReader imuReader(nh);
 WiFiReader wifiReader(nh);
+Display display;
+
 Timer<10> timer;
-#define IMU_COUNT_NUM 500
-double imu_count[IMU_COUNT_NUM];
-int imu_index = 0;
-double imu_freq = 0;
-
-void loginfo(char *buf)
-{
-  nh.loginfo(buf);
-
-  if (!is_display_available) {
-    return;
-  }
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0, 0);
-  display.println(F(buf));
-  display.display();
-}
-
-void showText(const char *buf, int row)
-{
-  if (!is_display_available) {
-    return;
-  }
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0, 8*row);
-  display.println(F(buf));
-}
 
 void showAppStatus()
 {
   char buf[128];
-  display.clearDisplay();
-  showText("WiFi Scanner Ready", 0);
-  showText("Waiting Connection", 1);
+  display.clear();
+  display.showText("WiFi Scanner Ready", 0);
+  display.showText("Waiting Connection", 1);
   sprintf(buf, "Time: %7.1f", millis()/1000.0);
-  showText(buf, 2);
+  display.showText(buf, 2);
   display.display();
 }
 
 void setup()
 {
-  memset(imu_count, 0, sizeof(imu_count));
-
-  if(display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
-    is_display_available = true;
-    showAppStatus();
-  }
+  display.init();
+  showAppStatus();
     
   // init hardware
   nh.getHardware()->setBaud(BAUDRATE);
@@ -160,12 +122,12 @@ void setup()
   }
   nh.loginfo("setting up WiFi");
   wifiReader.init([](char *buf){
-      if (!is_display_available) {
+      if (!display.available) {
         return;
       }
-      display.clearDisplay();
-      sprintf(buf+strlen(buf), " IMU:%3.0fHz", imu_freq);
-      showText(buf, 0);
+      display.clear();
+      sprintf(buf+strlen(buf), " IMU:%3.0fHz", imuReader.frequency());
+      display.showText(buf, 0);
       display.display();
     });
   
@@ -176,17 +138,9 @@ void setup()
 
   timer.every(9, [](void*){
       imuReader.update();
-      imu_freq = IMU_COUNT_NUM / (nh.now().toSec() - imu_count[imu_index]);
-      imu_count[imu_index] = nh.now().toSec();
-      imu_index = (imu_index+1)%IMU_COUNT_NUM;
       return true;
     });
 
-  // is_display_available could be changed from true to false somehow while init
-  // so, this is a workaround to re-enable display
-  if(display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
-    is_display_available = true;
-  }
 }
 
 void loop()
@@ -198,8 +152,8 @@ void loop()
 
 void restart()
 {
-  display.clearDisplay();
-  showText("Restart ESP", 0);
+  display.clear();
+  display.showText("Restart ESP", 0);
   display.display();
   ESP.restart();
 }

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2020,2022  Carnegie Mellon University
+ * Copyright (c) 2022  Carnegie Mellon University
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -20,37 +20,39 @@
  * THE SOFTWARE.
  *******************************************************************************/
 
-#ifndef ARDUINO_NODE_IMUREADER_H
-#define ARDUINO_NODE_IMUREADER_H
+#include "DisplayDriver.h"
 
-#include <Wire.h>
-#include <Adafruit_Sensor.h>
-#include <Adafruit_BNO055.h>
-#include <std_msgs/Float32MultiArray.h>
-#include <std_msgs/UInt8MultiArray.h>
-#include "SensorReader.h"
+Display::Display():
+    display_(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET) {
+}
 
-#define IMU_COUNT_NUM 500
+void Display::init() {
+  if(display_.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
+    available = true;
+  }
+}
 
-class IMUReader: public SensorReader {
-  Adafruit_BNO055 imu_;
-  std_msgs::Float32MultiArray imu_msg_;
-  std_msgs::UInt8MultiArray calibration_msg_;
-  ros::Publisher imu_pub_;
-  ros::Publisher calibration_pub_;
-  int in_calibration_;
-  double imu_count[IMU_COUNT_NUM];
-  int imu_index = 0;
-  double imu_freq = 0;
-public:
-  IMUReader(ros::NodeHandle &nh);
-  void calibration();
-  void init();
-  void init(uint8_t *offsets);
-  void update();
-  void update_calibration();
-  double frequency();
-};
+void Display::clear() {
+  if (!available) {
+    return;
+  }
+  display_.clearDisplay();
+}
 
+void Display::showText(const char *buf, int row)
+{
+  if (!available) {
+    return;
+  }
+  display_.setTextSize(1);
+  display_.setTextColor(SSD1306_WHITE);
+  display_.setCursor(0, 8*row);
+  display_.println(F(buf));
+}
 
-#endif //ARDUINO_NODE_IMUREADER_H
+void Display::display() {
+  if (!available) {
+    return;
+  }
+  display_.display();
+}

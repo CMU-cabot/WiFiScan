@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2020  Carnegie Mellon University
+ * Copyright (c) 2020,2022  Carnegie Mellon University
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -43,6 +43,7 @@ void IMUReader::init() {
 }
 
 void IMUReader::init(uint8_t *offsets) {
+  memset(imu_count, 0, sizeof(imu_count));
   if(!imu_.begin())
   {
     nh_.loginfo("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
@@ -66,6 +67,10 @@ void IMUReader::update() {
   if (!initialized_) {
     return;
   }
+  imu_freq = IMU_COUNT_NUM / (nh_.now().toSec() - imu_count[imu_index]);
+  imu_count[imu_index] = nh_.now().toSec();
+  imu_index = (imu_index+1)%IMU_COUNT_NUM;
+
   // put int32 as float32
   auto timestamp = nh_.now();
   imu_msg_.data[0] = *((float*)(&timestamp.sec));
@@ -104,4 +109,8 @@ void IMUReader::update_calibration() {
   imu_.getCalibration(offsets+22, offsets+23, offsets+24, offsets+25);
 
   calibration_pub_.publish( &calibration_msg_);
+}
+
+double IMUReader::frequency() {
+  return imu_freq;
 }
