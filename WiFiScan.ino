@@ -41,6 +41,8 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
+#include "wifi_scanner.h"
+
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 32
 #define OLED_RESET     4
@@ -85,6 +87,8 @@ bool is_display_available = false;
 ros::NodeHandle nh;
 std_msgs::String wifi_scan_msg;
 ros::Publisher wifi_scan_pub("wifi_scan_str", &wifi_scan_msg);
+
+wifi_scanner scanner = wifi_scanner(nh);
 
 int max_skip = DEFAULT_MAX_SKIP;
 int n_channel = DEFAULT_N_CHANNEL;
@@ -221,7 +225,8 @@ void setup()
 
 void loop()
 {
-  handleScan();
+  //handleScan();
+  scanner.update();
   nh.spinOnce();
 }
 
