@@ -103,6 +103,7 @@ class wifi_scanner {
     //void checkZeroScan(int maximum);
   public:
     wifi_scanner(ros::NodeHandle &nh);
+    void advertise();
     void update();
 
 };

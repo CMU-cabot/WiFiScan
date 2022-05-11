@@ -38,6 +38,11 @@ wifi_scanner::wifi_scanner(ros::NodeHandle &nh)
 {
 }
 
+void wifi_scanner::advertise()
+{
+  nh_.advertise(wifi_scan_pub);
+}
+
 void wifi_scanner::checkQueue()
 {
   if (waiting > 0) {

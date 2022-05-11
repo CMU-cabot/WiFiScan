@@ -85,8 +85,8 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 bool is_display_available = false;
 
 ros::NodeHandle nh;
-std_msgs::String wifi_scan_msg;
-ros::Publisher wifi_scan_pub("wifi_scan_str", &wifi_scan_msg);
+//std_msgs::String wifi_scan_msg;
+//ros::Publisher wifi_scan_pub("wifi_scan_str", &wifi_scan_msg);
 
 wifi_scanner scanner = wifi_scanner(nh);
 
@@ -195,7 +195,8 @@ void setup()
   // init rosserial
   nh.initNode();
   nh.setSpinTimeout(100);
-  nh.advertise(wifi_scan_pub);
+
+  scanner.advertise();
 
   int wait = millis();
   while(!nh.connected()) {
@@ -333,10 +334,11 @@ void checkQueue()
 {
   if (waiting > 0) {
     waiting--;
-    wifi_scan_msg.data = msg_buf[waiting];
-    wifi_scan_pub.publish(&wifi_scan_msg);
+    //wifi_scan_msg.data = msg_buf[waiting];
+    //wifi_scan_pub.publish(&wifi_scan_msg);
   }
 }
+
 
 void checkZeroScan(int maximum)
 {
