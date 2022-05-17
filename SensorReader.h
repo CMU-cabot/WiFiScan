@@ -23,7 +23,9 @@
 #ifndef ARDUINO_NODE_SENSORREADER_H
 #define ARDUINO_NODE_SENSORREADER_H
 
-#include <ros.h>
+#undef ESP32
+#include "ros.h"
+#define ESP32
 #include <Arduino.h>
 
 class SensorReader {
